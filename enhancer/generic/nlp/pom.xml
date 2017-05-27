@@ -69,6 +69,7 @@
               org.apache.stanbol.enhancer.nlp.sentiment;version=${project.version},
 			  org.apache.stanbol.enhancer.nlp.coref;version=${project.version},
 			  org.apache.stanbol.enhancer.nlp.dependency;version=${project.version},
+			  org.apache.stanbol.enhancer.nlp.relation;version=${project.version},
               org.apache.stanbol.enhancer.nlp.utils;version=${project.version}
             </Export-Package>
             <Import-Package>

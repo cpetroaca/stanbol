@@ -26,6 +26,7 @@ import org.apache.stanbol.enhancer.nlp.morpho.MorphoFeatures;
 import org.apache.stanbol.enhancer.nlp.ner.NerTag;
 import org.apache.stanbol.enhancer.nlp.phrase.PhraseTag;
 import org.apache.stanbol.enhancer.nlp.pos.PosTag;
+import org.apache.stanbol.enhancer.nlp.relation.EntityRelation;
 
 /**
  * Defines the {@link Annotation} constants typically used by NLP components
@@ -87,6 +88,14 @@ public interface NlpAnnotations {
 	 */
 	Annotation<CorefFeature> COREF_ANNOTATION = new Annotation<CorefFeature>(
 			"stanbol.enhancer.nlp.coref", CorefFeature.class);
+	
+	/**
+	 * {@link Annotation} representing all relations between two or more entities. 
+	 * Typically used on {@link Sentence}s.
+	 * <p>
+	 */
+	Annotation<EntityRelation> ENTITY_RELATION_ANNOTATION = new Annotation<EntityRelation>(
+			"stanbol.enhancer.nlp.relation", EntityRelation.class);
 
 	/*
 	 * Currently only used as part of MorphoFeatures
