@@ -16,6 +16,9 @@ public class EntityRelation {
 	 */
 	private String type;
 
+	/**
+	 * The confidence that this is the type of relation
+	 */
 	private double confidence;
 
 	/**

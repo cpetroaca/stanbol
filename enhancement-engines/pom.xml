@@ -116,6 +116,7 @@
     <module>zemanta</module> <!-- htt://zemanta.com -->
 
 	<module>entitycoreference</module>
+	<module>relationextraction</module>
   </modules>
 
   <build>

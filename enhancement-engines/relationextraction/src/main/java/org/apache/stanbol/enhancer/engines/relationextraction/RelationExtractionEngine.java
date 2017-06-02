@@ -19,8 +19,7 @@ package org.apache.stanbol.enhancer.engines.relationextraction;
 import static org.apache.stanbol.enhancer.nlp.utils.NlpEngineHelper.getLanguage;
 
 import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
+import java.util.Dictionary;
 import java.util.Map;
 
 import org.apache.felix.scr.annotations.Activate;
@@ -28,44 +27,73 @@ import org.apache.felix.scr.annotations.Component;
 import org.apache.felix.scr.annotations.Deactivate;
 import org.apache.felix.scr.annotations.Properties;
 import org.apache.felix.scr.annotations.Property;
+import org.apache.felix.scr.annotations.Reference;
 import org.apache.felix.scr.annotations.Service;
-import org.apache.stanbol.enhancer.nlp.NlpAnnotations;
-import org.apache.stanbol.enhancer.nlp.model.AnalysedText;
-import org.apache.stanbol.enhancer.nlp.model.Section;
-import org.apache.stanbol.enhancer.nlp.model.annotation.Value;
-import org.apache.stanbol.enhancer.nlp.relation.EntityRelation;
-import org.apache.stanbol.enhancer.nlp.utils.NlpEngineHelper;
 import org.apache.stanbol.enhancer.servicesapi.ContentItem;
 import org.apache.stanbol.enhancer.servicesapi.EngineException;
 import org.apache.stanbol.enhancer.servicesapi.EnhancementEngine;
 import org.apache.stanbol.enhancer.servicesapi.ServiceProperties;
 import org.apache.stanbol.enhancer.servicesapi.impl.AbstractEnhancementEngine;
+import org.apache.stanbol.entityhub.servicesapi.site.SiteManager;
 import org.osgi.service.cm.ConfigurationException;
 import org.osgi.service.component.ComponentContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
+ * Engine which extracts relations between entities
  * 
  * @author cpetroaca
  *
  */
 @Component(immediate = true, metatype = true)
 @Service(value = EnhancementEngine.class)
-@Properties(value = { @Property(name = EnhancementEngine.PROPERTY_NAME, value = "relationextraction") })
+@Properties(value = { @Property(name = EnhancementEngine.PROPERTY_NAME, value = "relationextraction"),
+		@Property(name = RelationExtractionEngine.REFERENCED_SITE_ID, value = "dbpedia") })
 public class RelationExtractionEngine extends AbstractEnhancementEngine<RuntimeException, RuntimeException>
 		implements EnhancementEngine, ServiceProperties {
 
 	private static final Integer ENGINE_ORDERING = ServiceProperties.ORDERING_POST_PROCESSING + 92;
 
 	/**
+	 * Referenced site configuration. Defaults to dbpedia.
+	 */
+	protected static final String REFERENCED_SITE_ID = "enhancer.engine.relationextraction.referencedSiteId";
+
+	/**
 	 * Logger
 	 */
 	private final Logger log = LoggerFactory.getLogger(RelationExtractionEngine.class);
 
+	/**
+	 * Service of the Entityhub that manages all the active referenced Site.
+	 * This Service is used to lookup the configured Referenced Site when we
+	 * need to enhance a content item.
+	 */
+	@Reference
+	protected SiteManager siteManager;
+
+	private RelationExtractor relationExtractor;
+
+	@SuppressWarnings("unchecked")
 	@Activate
 	protected void activate(ComponentContext ctx) throws ConfigurationException {
 		super.activate(ctx);
+
+		Dictionary<String, Object> config = ctx.getProperties();
+
+		Object referencedSiteIDfromConfig = config.get(REFERENCED_SITE_ID);
+		String referencedSiteID = null;
+		if (referencedSiteIDfromConfig != null) {
+			referencedSiteID = referencedSiteIDfromConfig.toString();
+			if (referencedSiteID.isEmpty()) {
+				throw new ConfigurationException("Property cannot be empty", REFERENCED_SITE_ID);
+			}
+		} else {
+			throw new ConfigurationException("Missing property", REFERENCED_SITE_ID);
+		}
+
+		relationExtractor = new RelationExtractor(siteManager, referencedSiteID);
 
 		log.info("activate {}[name:{}]", getClass().getSimpleName(), getName());
 	}
@@ -90,21 +118,7 @@ public class RelationExtractionEngine extends AbstractEnhancementEngine<RuntimeE
 
 	@Override
 	public void computeEnhancements(ContentItem ci) throws EngineException {
-		AnalysedText at = NlpEngineHelper.getAnalysedText(this, ci, true);
-
-		Iterator<? extends Section> sections = at.getSentences();
-		if (!sections.hasNext()) { // process as single sentence
-			sections = Collections.singleton(at).iterator();
-		}
-
-		while (sections.hasNext()) {
-			Section section = sections.next();
-			List<Value<EntityRelation>> relations = section.getAnnotations(NlpAnnotations.ENTITY_RELATION_ANNOTATION);
-			for (Value<EntityRelation> relation : relations) {
-				EntityRelation value = relation.value();
-				value.getClass();
-			}
-		}
+		relationExtractor.extract(ci, this);
 	}
 
 	@Deactivate
