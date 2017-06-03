@@ -311,6 +311,11 @@
       <artifactId>org.apache.stanbol.enhancer.engines.dereference.entityhub</artifactId>
       <version>1.0.1-SNAPSHOT</version>
     </bundle>
+    <bundle> <!-- finds relations between Entities-->
+      <groupId>org.apache.stanbol</groupId>
+      <artifactId>org.apache.stanbol.enhancer.engines.relationextraction</artifactId>
+      <version>1.0.1-SNAPSHOT</version>
+    </bundle>
     
     <!-- Refactor Enhancement Engine -->
     <!-- Moved to the refactor bundlelist
