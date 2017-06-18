@@ -49,7 +49,7 @@ import org.slf4j.LoggerFactory;
 @Component(immediate = true, metatype = true)
 @Service(value = EnhancementEngine.class)
 @Properties(value = { @Property(name = EnhancementEngine.PROPERTY_NAME, value = "relationextraction"),
-		@Property(name = RelationExtractionEngine.REFERENCED_SITE_ID, value = "dbpedia") })
+		@Property(name = RelationExtractionEngine.REFERENCED_SITE_ID, value = "dbpediafacts") })
 public class RelationExtractionEngine extends AbstractEnhancementEngine<RuntimeException, RuntimeException>
 		implements EnhancementEngine, ServiceProperties {
 

@@ -1,0 +1,5 @@
+#Sat Jun 17 13:19:43 EEST 2017
+Name=SolrIndex for dbpediafacts
+Synchronized=false
+Description=DBpedia.org 
+Index-Archive=dbpediafacts.solrindex.zip
