@@ -18,10 +18,19 @@ package org.apache.stanbol.enhancer.engines.relationextraction;
 
 import static org.apache.stanbol.enhancer.nlp.utils.NlpEngineHelper.getLanguage;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.security.AccessController;
+import java.security.PrivilegedActionException;
+import java.security.PrivilegedExceptionAction;
 import java.util.Collections;
 import java.util.Dictionary;
+import java.util.HashMap;
 import java.util.Map;
 
+import org.apache.clerezza.commons.rdf.IRI;
 import org.apache.felix.scr.annotations.Activate;
 import org.apache.felix.scr.annotations.Component;
 import org.apache.felix.scr.annotations.Deactivate;
@@ -29,6 +38,7 @@ import org.apache.felix.scr.annotations.Properties;
 import org.apache.felix.scr.annotations.Property;
 import org.apache.felix.scr.annotations.Reference;
 import org.apache.felix.scr.annotations.Service;
+import org.apache.stanbol.commons.stanboltools.datafileprovider.DataFileProvider;
 import org.apache.stanbol.enhancer.servicesapi.ContentItem;
 import org.apache.stanbol.enhancer.servicesapi.EngineException;
 import org.apache.stanbol.enhancer.servicesapi.EnhancementEngine;
@@ -49,7 +59,8 @@ import org.slf4j.LoggerFactory;
 @Component(immediate = true, metatype = true)
 @Service(value = EnhancementEngine.class)
 @Properties(value = { @Property(name = EnhancementEngine.PROPERTY_NAME, value = "relationextraction"),
-		@Property(name = RelationExtractionEngine.REFERENCED_SITE_ID, value = "dbpediafacts") })
+		@Property(name = RelationExtractionEngine.REFERENCED_SITE_ID, value = "dbpediafacts"),
+		@Property(name = RelationExtractionEngine.ONTOLOGY_MAP_FILE, value = "dbpedia_ontology_map") })
 public class RelationExtractionEngine extends AbstractEnhancementEngine<RuntimeException, RuntimeException>
 		implements EnhancementEngine, ServiceProperties {
 
@@ -59,6 +70,11 @@ public class RelationExtractionEngine extends AbstractEnhancementEngine<RuntimeE
 	 * Referenced site configuration. Defaults to dbpedia.
 	 */
 	protected static final String REFERENCED_SITE_ID = "enhancer.engine.relationextraction.referencedSiteId";
+
+	/**
+	 * Referenced site configuration. Defaults to dbpedia.
+	 */
+	protected static final String ONTOLOGY_MAP_FILE = "enhancer.engine.relationextraction.ontologyMapFile";
 
 	/**
 	 * Logger
@@ -72,6 +88,12 @@ public class RelationExtractionEngine extends AbstractEnhancementEngine<RuntimeE
 	 */
 	@Reference
 	protected SiteManager siteManager;
+
+	/**
+	 * Reference to the {@link DataFileProvider} that loads the event model
+	 */
+	@Reference
+	protected DataFileProvider dataFileProvider;
 
 	private RelationExtractor relationExtractor;
 
@@ -93,7 +115,14 @@ public class RelationExtractionEngine extends AbstractEnhancementEngine<RuntimeE
 			throw new ConfigurationException("Missing property", REFERENCED_SITE_ID);
 		}
 
-		relationExtractor = new RelationExtractor(siteManager, referencedSiteID);
+		String ontologyMapFilename = (String) config.get(ONTOLOGY_MAP_FILE);
+		if (ontologyMapFilename == null || ontologyMapFilename.isEmpty()) {
+			throw new ConfigurationException(ONTOLOGY_MAP_FILE,
+					"The Ontology Map File is a required Parameter and MUST NOT be NULL or an empty String!");
+		}
+
+		relationExtractor = new RelationExtractor(siteManager, referencedSiteID,
+				parseOntologyMapFile(ontologyMapFilename));
 
 		log.info("activate {}[name:{}]", getClass().getSimpleName(), getName());
 	}
@@ -126,5 +155,60 @@ public class RelationExtractionEngine extends AbstractEnhancementEngine<RuntimeE
 		log.info("deactivate {}[name:{}]", getClass().getSimpleName(), getName());
 
 		super.deactivate(ctx);
+	}
+
+	/**
+	 * Lookup an ontology data file via the {@link #dataFileProvider}
+	 * 
+	 * @param modelName
+	 *            the name of the model
+	 * @return the stream or <code>null</code> if not found
+	 * @throws IOException
+	 *             an any error while opening the model file
+	 */
+	private InputStream lookupOntologyStream(final String fileName, final Map<String, String> properties)
+			throws IOException {
+		try {
+			return AccessController.doPrivileged(new PrivilegedExceptionAction<InputStream>() {
+				public InputStream run() throws IOException {
+					return dataFileProvider.getInputStream(null, fileName, properties);
+				}
+			});
+		} catch (PrivilegedActionException pae) {
+			Exception e = pae.getException();
+			if (e instanceof IOException) {
+				throw (IOException) e;
+			} else {
+				throw RuntimeException.class.cast(e);
+			}
+		}
+	}
+
+	/**
+	 * Read the ontology mappings from file
+	 * @param ontologyMapFilename
+	 * @return
+	 * @throws ConfigurationException
+	 */
+	private Map<String, IRI> parseOntologyMapFile(String ontologyMapFilename) throws ConfigurationException {
+		Map<String, IRI> ontologyMap = new HashMap<>();
+
+		try (BufferedReader br = new BufferedReader(
+				new InputStreamReader(lookupOntologyStream(ontologyMapFilename, null)));) {
+			String line = null;
+
+			while ((line = br.readLine()) != null) {
+				String[] parts = line.split("=");
+
+				String relationType = parts[0];
+				IRI ontIri = new IRI(parts[1]);
+
+				ontologyMap.put(relationType, ontIri);
+			}
+		} catch (IOException e) {
+			throw new ConfigurationException("", "Error reading ontology file", e);
+		}
+
+		return ontologyMap;
 	}
 }

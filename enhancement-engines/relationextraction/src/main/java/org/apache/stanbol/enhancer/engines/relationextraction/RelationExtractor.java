@@ -6,6 +6,7 @@ import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.apache.clerezza.commons.rdf.Graph;
@@ -31,14 +32,24 @@ import org.apache.stanbol.entityhub.servicesapi.site.SiteManager;
 
 /**
  * Relation extractor
+ * 
  * @author cpetroaca
  *
  */
 class RelationExtractor {
+	/**
+	 * Access to entities in Sites or Entityhub
+	 */
 	private EntityStore entityStore;
 
-	public RelationExtractor(SiteManager siteManager, String referencedSiteId) {
-		entityStore = new EntityStore(siteManager, referencedSiteId);
+	/**
+	 * Maps a relation type to a common ontology IRI
+	 */
+	private Map<String, IRI> ontologyMap;
+
+	public RelationExtractor(SiteManager siteManager, String referencedSiteId, Map<String, IRI> ontologyMap) {
+		this.entityStore = new EntityStore(siteManager, referencedSiteId);
+		this.ontologyMap = ontologyMap;
 	}
 
 	public void extract(ContentItem ci, RelationExtractionEngine relationExtractionEngine) throws EngineException {
@@ -83,8 +94,10 @@ class RelationExtractor {
 					}
 				}
 
-				if (entities.isEmpty()) continue;
-				
+				if (entities.isEmpty())
+					continue;
+
+				IRI relationTypeMapping = ontologyMap.get(value.getType());
 				/*
 				 * TODO - is it ok to take the lock for every relation we find?
 				 * Maybe we can write them all after the sentences loop
@@ -92,8 +105,9 @@ class RelationExtractor {
 				ci.getLock().writeLock().lock();
 				try {
 					IRI textAnnotation = EnhancementEngineHelper.createTextEnhancement(ci, relationExtractionEngine);
-					metadata.add(new TripleImpl(textAnnotation, RelationEnhancerProperties.TYPE,
-							literalFactory.createTypedLiteral(value.getType())));
+					metadata.add(
+							new TripleImpl(textAnnotation, RelationEnhancerProperties.TYPE, relationTypeMapping == null
+									? literalFactory.createTypedLiteral(value.getType()) : relationTypeMapping));
 					metadata.add(new TripleImpl(textAnnotation, RelationEnhancerProperties.SENTENCE_NO,
 							literalFactory.createTypedLiteral(sentenceNo)));
 					metadata.add(new TripleImpl(textAnnotation, RelationEnhancerProperties.CONFIDENCE_LEVEL,
