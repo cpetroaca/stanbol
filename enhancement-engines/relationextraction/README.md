@@ -16,3 +16,9 @@
 -->
 
 # Relation extraction engine
+
+In order to be fully operational, the engine needs to be updated with the dbpedia_ontology_map file. To do so, follow these steps:
+
+1. After stanbol is started, go to the Administration Console and stop the relationextraction bundle
+2. Copy the file https://github.com/cpetroaca/stanbol-indices/releases/download/trunk-relation-dbpedia-ontologimappimgs/dbpedia_ontology_map to STANBOL_FOLDER/datafiles/
+3. Start the relationextraction bundle.
