@@ -77,7 +77,7 @@ class RelationExtractor {
 			for (Value<EntityRelation> relation : relations) {
 				EntityRelation value = relation.value();
 				Set<Span> relationSpans = value.getEntitySpans();
-				Set<Object> entities = new HashSet<>();
+				List<Object> entities = new ArrayList<>();
 
 				/*
 				 * Convert from relation spans to {@link Entity}
